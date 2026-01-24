@@ -1,0 +1,19 @@
+version: 1
+work: Nietzsche_Genealogy_of_Morals_I
+
+claims:
+  - claim_id: GM.I.C01
+    type: genealogy
+    statement_ja: "『善』の起源は支配的階層の自己肯定にある。"
+    my_paraphrase: "善は最初から道徳的な正しさではなく、強者が自分を持ち上げるラベルだった。"
+    concepts: ["NIETZ.MORALITY_NOBLE", "NIETZ.VALUE_GOOD_NOBLE"]
+    sources:
+      - ref: "GM I §2-3"
+
+  - claim_id: GM.I.C02
+    type: inversion
+    statement_ja: "奴隷道徳は価値判断の反転によって成立する。"
+    my_paraphrase: "弱者側が強さを『悪』と呼び、弱さを『善』と呼ぶことで構成された価値体系。"
+    concepts: ["NIETZ.MORALITY_SLAVE", "NIETZ.VALUE_EVIL"]
+    sources:
+      - ref: "GM I §7-10"
