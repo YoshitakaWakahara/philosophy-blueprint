@@ -1,0 +1,25 @@
+[project]
+name = "philosophy-blueprint"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "YoshitakaWakahara", email = "wakaharayoshitaka@gmail.com" }
+]
+requires-python = ">=3.9"
+dependencies = [
+    "openai>=2.14.0",
+    "pydantic>=2.12.5",
+    "python-dotenv>=1.2.1",
+    "pyyaml>=6.0.3",
+    "rich>=14.2.0",
+    "typer>=0.21.0",
+]
+
+[project.scripts]
+philosophy-blueprint = "philosophy_blueprint:main"
+phblue = "philosophy_blueprint.cli:app"
+
+[build-system]
+requires = ["uv_build>=0.9.21,<0.10.0"]
+build-backend = "uv_build"
