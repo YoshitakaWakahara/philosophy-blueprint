@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pathlib
+from typing import Optional
 
 import typer
 import yaml
@@ -9,8 +10,10 @@ from rich import print
 from .chunking import build_genealogy_i_chunk_map
 from .chunking import normalize_ref
 from .chunking import write_chunks
+from .config import get_gemini_config
 from .config import get_openai_config
 from .models import ClaimsFile
+from .translation import translate_with_gemini
 from .translation import translate_with_openai
 from .translation import write_translation_file
 
@@ -19,6 +22,8 @@ app = typer.Typer(help="philosophy-blueprint CLI")
 DEFAULT_SOURCE_PATH = pathlib.Path("sources/genealogy_I/GM_I_full.txt")
 DEFAULT_CHUNK_DIR = pathlib.Path("sources/genealogy_I/chunks")
 DEFAULT_TRANSLATION_DIR = pathlib.Path("translations/genealogy_I")
+DEFAULT_OPENAI_MODEL = "gpt-4.1-mini"
+DEFAULT_GEMINI_MODEL = "gemini-2.0-flash"
 
 
 @app.callback()
@@ -65,6 +70,13 @@ def validate_claims(path: str = "analysis/genealogy_I/claims.yaml") -> None:
     print(f"[green]OK:[/green] {file_path} is valid.")
 
 
+def _normalize_provider(provider: str) -> str:
+    normalized = provider.strip().lower()
+    if normalized not in {"openai", "gemini"}:
+        raise ValueError(f"Unsupported provider: {provider}. Use openai or gemini.")
+    return normalized
+
+
 @app.command()
 def divide_chunk(
     source: str = str(DEFAULT_SOURCE_PATH),
@@ -97,7 +109,8 @@ def translate_chunk(
     ref: str,
     source: str = str(DEFAULT_SOURCE_PATH),
     out_dir: str = str(DEFAULT_TRANSLATION_DIR),
-    model: str = "gpt-4.1-mini",
+    provider: str = "openai",
+    model: Optional[str] = None,
     dry_run: bool = False,
 ) -> None:
     """
@@ -105,10 +118,15 @@ def translate_chunk(
     """
     try:
         normalized_ref = normalize_ref(ref)
+        normalized_provider = _normalize_provider(provider)
         chunk_map = build_genealogy_i_chunk_map(pathlib.Path(source))
     except (ValueError, FileNotFoundError) as e:
         print(f"[red]Input error:[/red] {e}")
         raise typer.Exit(code=1)
+
+    selected_model = model or (
+        DEFAULT_OPENAI_MODEL if normalized_provider == "openai" else DEFAULT_GEMINI_MODEL
+    )
 
     source_text = chunk_map.get(normalized_ref)
     if not source_text:
@@ -117,21 +135,35 @@ def translate_chunk(
 
     if dry_run:
         print(f"[green]Resolved chunk:[/green] {normalized_ref}")
+        print(f"provider={normalized_provider} model={selected_model}")
         print(source_text[:700] + ("..." if len(source_text) > 700 else ""))
         return
 
-    try:
-        cfg = get_openai_config()
-    except RuntimeError as e:
-        print(f"[red]Config error:[/red] {e}")
-        raise typer.Exit(code=1)
+    if normalized_provider == "openai":
+        try:
+            cfg = get_openai_config()
+        except RuntimeError as e:
+            print(f"[red]Config error:[/red] {e}")
+            raise typer.Exit(code=1)
+        translated = translate_with_openai(
+            cfg=cfg,
+            source_text=source_text,
+            ref=normalized_ref,
+            model=selected_model,
+        )
+    else:
+        try:
+            cfg = get_gemini_config()
+        except RuntimeError as e:
+            print(f"[red]Config error:[/red] {e}")
+            raise typer.Exit(code=1)
+        translated = translate_with_gemini(
+            cfg=cfg,
+            source_text=source_text,
+            ref=normalized_ref,
+            model=selected_model,
+        )
 
-    translated = translate_with_openai(
-        cfg=cfg,
-        source_text=source_text,
-        ref=normalized_ref,
-        model=model,
-    )
     if not translated:
         print("[red]Translation failed:[/red] empty response")
         raise typer.Exit(code=1)

@@ -71,3 +71,24 @@ def test_translate_chunk_dry_run(tmp_path: pathlib.Path) -> None:
 
     assert result.exit_code == 0
     assert "Resolved chunk: GM.I.S11" in result.stdout
+
+
+def test_translate_chunk_rejects_unknown_provider(tmp_path: pathlib.Path) -> None:
+    source = tmp_path / "gm_i.txt"
+    _write_sample_source(source)
+
+    result = runner.invoke(
+        app,
+        [
+            "translate-chunk",
+            "GM.I.S01",
+            "--source",
+            str(source),
+            "--provider",
+            "unknown",
+            "--dry-run",
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "Unsupported provider" in result.stdout
