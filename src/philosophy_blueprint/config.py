@@ -13,9 +13,25 @@ class OpenAIConfig:
     base_url: str = "https://api.openai.com/v1"
 
 
+@dataclass
+class GeminiConfig:
+    api_key: str
+    base_url: str = "https://generativelanguage.googleapis.com/v1beta/openai"
+
+
 def get_openai_config() -> OpenAIConfig:
     api_key = os.environ.get("OPENAI_API_KEY")
     if not api_key:
         raise RuntimeError("OPENAI_API_KEY is not set. Configure .env or env vars.")
     base_url = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1")
     return OpenAIConfig(api_key=api_key, base_url=base_url)
+
+
+def get_gemini_config() -> GeminiConfig:
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        raise RuntimeError("GEMINI_API_KEY is not set. Configure .env or env vars.")
+    base_url = os.environ.get(
+        "GEMINI_BASE_URL", "https://generativelanguage.googleapis.com/v1beta/openai"
+    )
+    return GeminiConfig(api_key=api_key, base_url=base_url)
