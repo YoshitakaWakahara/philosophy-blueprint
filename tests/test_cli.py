@@ -92,3 +92,74 @@ def test_translate_chunk_rejects_unknown_provider(tmp_path: pathlib.Path) -> Non
 
     assert result.exit_code == 1
     assert "Unsupported provider" in result.stdout
+
+
+def test_translate_all_chunks_dry_run_with_range(tmp_path: pathlib.Path) -> None:
+    source = tmp_path / "gm_i.txt"
+    out_dir = tmp_path / "translations"
+    _write_sample_source(source)
+
+    result = runner.invoke(
+        app,
+        [
+            "translate-all-chunks",
+            "--source",
+            str(source),
+            "--out-dir",
+            str(out_dir),
+            "--provider",
+            "gemini",
+            "--from-ref",
+            "GM.I.S01",
+            "--to-ref",
+            "GM.I.S11",
+            "--dry-run",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "would translate GM.I.S01" in result.stdout
+    assert "would translate GM.I.S11" in result.stdout
+    assert "total=2 done=2 skipped=0 failed=0" in result.stdout
+
+
+def test_translate_all_chunks_invalid_range(tmp_path: pathlib.Path) -> None:
+    source = tmp_path / "gm_i.txt"
+    _write_sample_source(source)
+
+    result = runner.invoke(
+        app,
+        [
+            "translate-all-chunks",
+            "--source",
+            str(source),
+            "--from-ref",
+            "GM.I.S11",
+            "--to-ref",
+            "GM.I.S01",
+            "--dry-run",
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "from_ref must be <= to_ref" in result.stdout
+
+
+def test_translate_all_chunks_invalid_requests_per_minute(tmp_path: pathlib.Path) -> None:
+    source = tmp_path / "gm_i.txt"
+    _write_sample_source(source)
+
+    result = runner.invoke(
+        app,
+        [
+            "translate-all-chunks",
+            "--source",
+            str(source),
+            "--requests-per-minute",
+            "0",
+            "--dry-run",
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "requests_per_minute must be > 0" in result.stdout

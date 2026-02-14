@@ -3,6 +3,8 @@ from __future__ import annotations
 from openai import OpenAI
 
 from ..config import GeminiConfig
+from .prompt import SYSTEM_PROMPT
+from .prompt import build_user_prompt
 
 
 def translate_with_gemini(
@@ -11,28 +13,22 @@ def translate_with_gemini(
     ref: str,
     model: str,
 ) -> str:
-    # Gemini OpenAI-compatible endpoint.
+    # Gemini OpenAI-compatible endpoint currently supports chat.completions.
     client = OpenAI(api_key=cfg.api_key, base_url=cfg.base_url)
-    response = client.responses.create(
+    response = client.chat.completions.create(
         model=model,
-        input=[
+        messages=[
             {
                 "role": "system",
-                "content": (
-                    "You are a precise philosophy translator. "
-                    "Translate English to Japanese with high fidelity. "
-                    "Do not summarize. Preserve nuance and rhetorical tone."
-                ),
+                "content": SYSTEM_PROMPT,
             },
             {
                 "role": "user",
-                "content": (
-                    f"Ref: {ref}\n"
-                    "Task: Translate the following source text into Japanese.\n"
-                    "Output only the Japanese translation.\n\n"
-                    f"{source_text}"
-                ),
+                "content": build_user_prompt(ref=ref, source_text=source_text),
             },
         ],
     )
-    return (response.output_text or "").strip()
+    message = response.choices[0].message.content
+    if isinstance(message, str):
+        return message.strip()
+    return ""

@@ -1,10 +1,14 @@
 from __future__ import annotations
 
 import pathlib
+from datetime import datetime
+from datetime import timezone
 
 from openai import OpenAI
 
 from ..config import OpenAIConfig
+from .prompt import SYSTEM_PROMPT
+from .prompt import build_user_prompt
 
 
 def translate_with_openai(
@@ -19,20 +23,11 @@ def translate_with_openai(
         input=[
             {
                 "role": "system",
-                "content": (
-                    "You are a precise philosophy translator. "
-                    "Translate English to Japanese with high fidelity. "
-                    "Do not summarize. Preserve nuance and rhetorical tone."
-                ),
+                "content": SYSTEM_PROMPT,
             },
             {
                 "role": "user",
-                "content": (
-                    f"Ref: {ref}\n"
-                    "Task: Translate the following source text into Japanese.\n"
-                    "Output only the Japanese translation.\n\n"
-                    f"{source_text}"
-                ),
+                "content": build_user_prompt(ref=ref, source_text=source_text),
             },
         ],
     )
@@ -43,8 +38,11 @@ def write_translation_file(
     output_dir: pathlib.Path,
     ref: str,
     source: str,
+    provider: str,
+    model: str,
     translated_text: str,
 ) -> pathlib.Path:
+    generated_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
     output_dir.mkdir(parents=True, exist_ok=True)
     out_file = output_dir / f"{ref}.md"
     out_file.write_text(
@@ -54,6 +52,12 @@ def write_translation_file(
                 "",
                 "## Source",
                 f"- {source}",
+                "",
+                "## Metadata",
+                f"- ref: {ref}",
+                f"- provider: {provider}",
+                f"- model: {model}",
+                f"- generated_at_utc: {generated_at}",
                 "",
                 "## Translation (JA)",
                 translated_text,
