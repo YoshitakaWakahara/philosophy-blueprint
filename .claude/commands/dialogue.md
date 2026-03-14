@@ -41,24 +41,34 @@ sources:
 
 ## セッション終了時の出力
 
-対話の中で確定した内容を以下の形式でまとめて出力してください：
+私が「終わり」「保存して」などセッションの終了を示したら、以下の形式で **会話の全文** を出力してください。要約ではなく、やりとりをそのまま残します。
 
 ```markdown
 ## $ARGUMENTS 壁打ち記録 {今日の日付}
 
-### {claim_id}
-**Q:** ...
-**A:** ...
+### 対話全文
 
-**確定 my_paraphrase:** "..."
+**私:** ...
+**Claude:** ...
+**私:** ...
+**Claude:** ...
+
+---
+
+### 確定した my_paraphrase
+
+| claim_id | my_paraphrase |
+|----------|--------------|
+| GM.I.SXX.C01 | "..." |
+| GM.I.SXX.C02 | "..." |
 ```
 
-その後、以下のコマンドで保存できることを案内してください：
+出力後、以下のコマンドを案内してください：
 
 ```bash
-# 記録を保存
-uv run phblue save-trace $ARGUMENTS --from-file <記録ファイル>
+# 1. 上記の出力をファイルに保存してから実行
+uv run phblue save-trace $ARGUMENTS --from-file <保存したファイルパス>
 
-# my_paraphraseを書き込む
+# 2. my_paraphraseを書き込む（確定した分だけ）
 uv run phblue set-paraphrase {claim_id} "{my_paraphrase}"
 ```
