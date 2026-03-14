@@ -1,0 +1,11 @@
+version: 1
+work: Nietzsche_Genealogy_of_Morals_I
+section: GM.I.S02
+claims:
+  - claim_id: GM.I.C01
+    type: genealogy
+    statement_ja: "『善』の起源は支配的階層の自己肯定にある。"
+    my_paraphrase: "善は最初から道徳的な正しさではなく、強者が自分を持ち上げるラベルだった。"
+    concepts: ["NIETZ.MORALITY_NOBLE", "NIETZ.VALUE_GOOD_NOBLE"]
+    sources:
+      - ref: "GM I §2-3"

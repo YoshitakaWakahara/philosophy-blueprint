@@ -27,4 +27,5 @@ class Claim(BaseModel):
 class ClaimsFile(BaseModel):
     version: int = 1
     work: str
+    section: Optional[str] = None
     claims: list[Claim]

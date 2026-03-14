@@ -45,7 +45,7 @@ src/philosophy_blueprint/
 ```
 
 **規約:**
-- `analysis/` のみコミット対象。`sources/`, `translations/`, `trace/` はコミットしない
+- `analysis/`, `trace/` はコミット対象。`sources/`, `translations/` はコミットしない
 - 原文の再配布につながる内容は `analysis/` に置かない
 - 参照IDは `GM.I.S01` 形式（ゼロ埋め2桁）を標準とする
 

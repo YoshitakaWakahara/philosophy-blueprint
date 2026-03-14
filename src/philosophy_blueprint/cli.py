@@ -52,23 +52,39 @@ def info() -> None:
 
 
 @app.command()
-def validate_claims(path: str = "analysis/genealogy_I/claims.yaml") -> None:
+def validate_claims(path: str = "analysis/genealogy_I/claims") -> None:
     """
-    claims.yaml を読み込み、Pydanticでバリデーションする。
+    claims yaml を読み込み、Pydanticでバリデーションする。ファイルまたはディレクトリを指定可。
     """
-    file_path = pathlib.Path(path)
-    if not file_path.exists():
-        print(f"[red]File not found:[/red] {file_path}")
-        raise typer.Exit(code=1)
+    target = pathlib.Path(path)
 
-    data = yaml.safe_load(file_path.read_text(encoding="utf-8"))
-    try:
-        ClaimsFile.model_validate(data)
-    except Exception as e:
-        print(f"[red]Validation failed:[/red] {e}")
+    if target.is_dir():
+        files = sorted(target.glob("*.yaml"))
+        if not files:
+            print(f"[yellow]No yaml files found in {target}[/yellow]")
+            raise typer.Exit(code=1)
+        errors = 0
+        for f in files:
+            data = yaml.safe_load(f.read_text(encoding="utf-8"))
+            try:
+                ClaimsFile.model_validate(data)
+                print(f"[green]OK:[/green] {f.name}")
+            except Exception as e:
+                print(f"[red]Failed:[/red] {f.name}: {e}")
+                errors += 1
+        if errors:
+            raise typer.Exit(code=1)
+    elif target.is_file():
+        data = yaml.safe_load(target.read_text(encoding="utf-8"))
+        try:
+            ClaimsFile.model_validate(data)
+        except Exception as e:
+            print(f"[red]Validation failed:[/red] {e}")
+            raise typer.Exit(code=1)
+        print(f"[green]OK:[/green] {target} is valid.")
+    else:
+        print(f"[red]Not found:[/red] {target}")
         raise typer.Exit(code=1)
-
-    print(f"[green]OK:[/green] {file_path} is valid.")
 
 
 def _normalize_provider(provider: str) -> str:
