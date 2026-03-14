@@ -26,6 +26,7 @@ DEFAULT_SOURCE_PATH = pathlib.Path("sources/genealogy_I/GM_I_full.txt")
 DEFAULT_CHUNK_DIR = pathlib.Path("sources/genealogy_I/chunks")
 DEFAULT_TRANSLATION_DIR = pathlib.Path("translations/genealogy_I")
 DEFAULT_CLAIMS_DIR = pathlib.Path("analysis/genealogy_I/claims")
+DEFAULT_TRACE_DIR = pathlib.Path("trace/genealogy_I")
 DEFAULT_OPENAI_MODEL = "gpt-4.1-mini"
 DEFAULT_GEMINI_MODEL = "models/gemini-2.5-flash"
 
@@ -413,6 +414,87 @@ def extract_claims(
         encoding="utf-8",
     )
     print(f"[green]OK:[/green] extracted {len(new_claims)} claims → {out_file}")
+
+
+@app.command()
+def save_trace(
+    ref: str,
+    text: Optional[str] = typer.Option(None, "--text", "-t", help="保存するテキスト"),
+    from_file: Optional[str] = typer.Option(None, "--from-file", "-f", help="読み込むファイルパス"),
+    trace_dir: str = str(DEFAULT_TRACE_DIR),
+    append: bool = typer.Option(True, help="既存ファイルに追記する（--no-appendで上書き）"),
+) -> None:
+    """
+    壁打ちの記録を trace/ に保存する。--text または --from-file でテキストを渡す。
+    """
+    try:
+        normalized_ref = normalize_ref(ref)
+    except ValueError as e:
+        print(f"[red]Input error:[/red] {e}")
+        raise typer.Exit(code=1)
+
+    if text:
+        content = text
+    elif from_file:
+        fp = pathlib.Path(from_file)
+        if not fp.exists():
+            print(f"[red]File not found:[/red] {fp}")
+            raise typer.Exit(code=1)
+        content = fp.read_text(encoding="utf-8")
+    else:
+        print("[red]Input error:[/red] provide --text or --from-file")
+        raise typer.Exit(code=1)
+
+    out_file = pathlib.Path(trace_dir) / f"{normalized_ref}.md"
+    out_file.parent.mkdir(parents=True, exist_ok=True)
+
+    if append and out_file.exists():
+        out_file.write_text(
+            out_file.read_text(encoding="utf-8") + "\n\n---\n\n" + content,
+            encoding="utf-8",
+        )
+        print(f"[green]OK:[/green] appended to {out_file}")
+    else:
+        out_file.write_text(content, encoding="utf-8")
+        print(f"[green]OK:[/green] wrote {out_file}")
+
+
+@app.command()
+def set_paraphrase(
+    claim_id: str,
+    paraphrase: str,
+    claims_dir: str = str(DEFAULT_CLAIMS_DIR),
+) -> None:
+    """
+    claim_id（例: GM.I.S01.C01）の my_paraphrase を更新する。
+    """
+    # claim_id から節を特定: GM.I.S01.C01 → GM.I.S01
+    parts = claim_id.rsplit(".", 1)
+    if len(parts) != 2 or not parts[1].startswith("C"):
+        print(f"[red]Input error:[/red] invalid claim_id format: {claim_id}")
+        raise typer.Exit(code=1)
+    section = parts[0]
+
+    claims_file_path = pathlib.Path(claims_dir) / f"{section}.yaml"
+    if not claims_file_path.exists():
+        print(f"[red]Not found:[/red] {claims_file_path}")
+        raise typer.Exit(code=1)
+
+    data = yaml.safe_load(claims_file_path.read_text(encoding="utf-8"))
+    claims_obj = ClaimsFile.model_validate(data)
+
+    target = next((c for c in claims_obj.claims if c.claim_id == claim_id), None)
+    if target is None:
+        print(f"[red]Not found:[/red] claim_id {claim_id} in {claims_file_path.name}")
+        raise typer.Exit(code=1)
+
+    target.my_paraphrase = paraphrase
+    claims_file_path.write_text(
+        yaml.dump(claims_obj.model_dump(exclude_none=True), allow_unicode=True, sort_keys=False),
+        encoding="utf-8",
+    )
+    print(f"[green]OK:[/green] updated {claim_id}")
+    print(f"  my_paraphrase: {paraphrase}")
 
 
 if __name__ == "__main__":

@@ -1,4 +1,71 @@
 version: 1
 work: Nietzsche_Genealogy_of_Morals_I
 section: GM.I.S01
-claims: []
+claims:
+- claim_id: GM.I.S01.C01
+  type: genealogy
+  statement_ja: 英国の心理学者たちは、道徳の起源の歴史を探求しようとした唯一の哲学者たちであるとニーチェは認める。
+  my_paraphrase: 善の起源探求の先駆者として認めつつ、その動機の浅さを問い直す冒頭の構え。
+  concepts:
+  - NIETZ.MORALITY_ORIGIN
+  - NIETZ.PSYCHOLOGY_ENGLISH
+  - NIETZ.GENEALOGY
+  sources:
+  - ref: GM I §1
+  depends_on: []
+- claim_id: GM.I.S01.C02
+  type: diagnosis
+  statement_ja: 英国の心理学者たちは、内なる世界の「恥部」に、知的自尊心が最も避けるであろう場所（習慣、忘却、受動的なメカニズムなど）に、道徳の支配的な原理を求める。
+  my_paraphrase: ''
+  concepts:
+  - NIETZ.HUMAN_NATURE
+  - NIETZ.INSTINCT
+  - NIETZ.MORALITY_ORIGIN
+  - NIETZ.PSYCHOLOGY_ENGLISH
+  - NIETZ.SELF_RESPECT
+  - NIETZ.WILL_TO_KNOWLEDGE
+  sources:
+  - ref: GM I §1
+  depends_on: []
+- claim_id: GM.I.S01.C03
+  type: diagnosis
+  statement_ja: ニーチェは、英国の心理学者たちが特定の探求方向へ向かう真の動機を問い、人間を貶める本能、悲観的な嫉妬、潜在意識下の反キリスト教・反プラトン主義、あるいは奇妙なものへの悪趣味といった可能性を提示する。
+  my_paraphrase: ''
+  concepts:
+  - NIETZ.INSTINCT
+  - NIETZ.PESSIMISM
+  - NIETZ.ANTI_CHRISTIANITY
+  - NIETZ.WILL_TO_KNOWLEDGE
+  - NIETZ.PSYCHOLOGY_ENGLISH
+  - NIETZ.PLATONISM
+  - NIETZ.MOTIVE
+  sources:
+  - ref: GM I §1
+  depends_on: []
+- claim_id: GM.I.S01.C04
+  type: critique
+  statement_ja: ニーチェは、英国の心理学者たちを「古く冷淡で退屈な蛙」と見なす描写を明確に否定する。
+  my_paraphrase: ''
+  concepts:
+  - NIETZ.PSYCHOLOGY_ENGLISH
+  - NIETZ.CRITICISM_OF_PHILOSOPHERS
+  - NIETZ.JUDGMENT
+  sources:
+  - ref: GM I §1
+  depends_on: []
+- claim_id: GM.I.S01.C05
+  type: distinction
+  statement_ja: ニーチェは、これらの分析心理学者たちが、本質的には勇敢で、誇り高く、寛大で、自己を律し、たとえ単純で苦く、醜く、嫌悪感を催し、非キリスト教的で不道徳なものであっても、あらゆる真実のために望ましいものを犠牲にする覚悟を持つ者であるよう願う。
+  my_paraphrase: ''
+  concepts:
+  - NIETZ.WILL_TO_TRUTH
+  - NIETZ.TRUTH
+  - NIETZ.MORALITY
+  - NIETZ.ANTI_CHRISTIANITY
+  - NIETZ.SELF_OVERCOMING
+  - NIETZ.PHILOSOPHER
+  - NIETZ.COURAGE
+  - NIETZ.PSYCHOLOGY_ENGLISH
+  sources:
+  - ref: GM I §1
+  depends_on: []
