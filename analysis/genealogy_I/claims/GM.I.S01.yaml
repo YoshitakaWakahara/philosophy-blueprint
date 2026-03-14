@@ -5,7 +5,7 @@ claims:
 - claim_id: GM.I.S01.C01
   type: genealogy
   statement_ja: 英国の心理学者たちは、道徳の起源の歴史を探求しようとした唯一の哲学者たちであるとニーチェは認める。
-  my_paraphrase: 善の起源探求の先駆者として認めつつ、その動機の浅さを問い直す冒頭の構え。
+  my_paraphrase: イギリスの心理学者たちは、人間が脊椎反射で生きている原理を探し求めている。ニーチェは彼らが道徳の起源を探ろうとしていたことは認めつつも、批判しようとしている。
   concepts:
   - NIETZ.MORALITY_ORIGIN
   - NIETZ.PSYCHOLOGY_ENGLISH
