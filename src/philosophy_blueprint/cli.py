@@ -24,7 +24,7 @@ DEFAULT_SOURCE_PATH = pathlib.Path("sources/genealogy_I/GM_I_full.txt")
 DEFAULT_CHUNK_DIR = pathlib.Path("sources/genealogy_I/chunks")
 DEFAULT_TRANSLATION_DIR = pathlib.Path("translations/genealogy_I")
 DEFAULT_OPENAI_MODEL = "gpt-4.1-mini"
-DEFAULT_GEMINI_MODEL = "gemini-2.0-flash"
+DEFAULT_GEMINI_MODEL = "models/gemini-2.5-flash"
 
 
 @app.callback()
