@@ -10,7 +10,8 @@
 ## 2. Repository Rules
 
 - `analysis/` はコミット対象の構造データ置き場。
-- `sources/`, `translations/`, `trace/` は原文・生成物・トレース情報。`.gitignore` により原則コミットしない。
+- `sources/`, `translations/` は原文・生成物。`.gitignore` によりコミットしない。
+- `trace/` は読解プロセスの記録。コミット対象。
 - 原文の再配布につながる内容は `analysis/` に置かない。
 
 ## 3. Current Commands

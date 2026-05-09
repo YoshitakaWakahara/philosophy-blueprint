@@ -1,0 +1,11 @@
+version: 1
+work: Nietzsche_Genealogy_of_Morals_I
+section: GM.I.S07
+claims:
+  - claim_id: GM.I.C02
+    type: inversion
+    statement_ja: "奴隷道徳は価値判断の反転によって成立する。"
+    my_paraphrase: "弱者側が強さを『悪』と呼び、弱さを『善』と呼ぶことで構成された価値体系。"
+    concepts: ["NIETZ.MORALITY_SLAVE", "NIETZ.VALUE_EVIL"]
+    sources:
+      - ref: "GM I §7-10"

@@ -8,12 +8,14 @@ import typer
 import yaml
 from rich import print
 
+from .claims import extract_claims_with_gemini
+from .claims import extract_claims_with_openai
 from .chunking import build_genealogy_i_chunk_map
 from .chunking import normalize_ref
 from .chunking import write_chunks
 from .config import get_gemini_config
 from .config import get_openai_config
-from .models import ClaimsFile
+from .models import Claim, ClaimsFile
 from .translation import translate_with_gemini
 from .translation import translate_with_openai
 from .translation import write_translation_file
@@ -23,8 +25,10 @@ app = typer.Typer(help="philosophy-blueprint CLI")
 DEFAULT_SOURCE_PATH = pathlib.Path("sources/genealogy_I/GM_I_full.txt")
 DEFAULT_CHUNK_DIR = pathlib.Path("sources/genealogy_I/chunks")
 DEFAULT_TRANSLATION_DIR = pathlib.Path("translations/genealogy_I")
+DEFAULT_CLAIMS_DIR = pathlib.Path("analysis/genealogy_I/claims")
+DEFAULT_TRACE_DIR = pathlib.Path("trace/genealogy_I")
 DEFAULT_OPENAI_MODEL = "gpt-4.1-mini"
-DEFAULT_GEMINI_MODEL = "gemini-2.0-flash"
+DEFAULT_GEMINI_MODEL = "models/gemini-2.5-flash"
 
 
 @app.callback()
@@ -52,23 +56,39 @@ def info() -> None:
 
 
 @app.command()
-def validate_claims(path: str = "analysis/genealogy_I/claims.yaml") -> None:
+def validate_claims(path: str = "analysis/genealogy_I/claims") -> None:
     """
-    claims.yaml を読み込み、Pydanticでバリデーションする。
+    claims yaml を読み込み、Pydanticでバリデーションする。ファイルまたはディレクトリを指定可。
     """
-    file_path = pathlib.Path(path)
-    if not file_path.exists():
-        print(f"[red]File not found:[/red] {file_path}")
-        raise typer.Exit(code=1)
+    target = pathlib.Path(path)
 
-    data = yaml.safe_load(file_path.read_text(encoding="utf-8"))
-    try:
-        ClaimsFile.model_validate(data)
-    except Exception as e:
-        print(f"[red]Validation failed:[/red] {e}")
+    if target.is_dir():
+        files = sorted(target.glob("*.yaml"))
+        if not files:
+            print(f"[yellow]No yaml files found in {target}[/yellow]")
+            raise typer.Exit(code=1)
+        errors = 0
+        for f in files:
+            data = yaml.safe_load(f.read_text(encoding="utf-8"))
+            try:
+                ClaimsFile.model_validate(data)
+                print(f"[green]OK:[/green] {f.name}")
+            except Exception as e:
+                print(f"[red]Failed:[/red] {f.name}: {e}")
+                errors += 1
+        if errors:
+            raise typer.Exit(code=1)
+    elif target.is_file():
+        data = yaml.safe_load(target.read_text(encoding="utf-8"))
+        try:
+            ClaimsFile.model_validate(data)
+        except Exception as e:
+            print(f"[red]Validation failed:[/red] {e}")
+            raise typer.Exit(code=1)
+        print(f"[green]OK:[/green] {target} is valid.")
+    else:
+        print(f"[red]Not found:[/red] {target}")
         raise typer.Exit(code=1)
-
-    print(f"[green]OK:[/green] {file_path} is valid.")
 
 
 def _normalize_provider(provider: str) -> str:
@@ -296,6 +316,186 @@ def translate_all_chunks(
     print(
         f"[green]Batch done:[/green] total={len(target_refs)} done={done} skipped={skipped} failed={failed}"
     )
+
+@app.command()
+def extract_claims(
+    ref: str,
+    chunk_dir: str = str(DEFAULT_CHUNK_DIR),
+    translation_dir: str = str(DEFAULT_TRANSLATION_DIR),
+    claims_dir: str = str(DEFAULT_CLAIMS_DIR),
+    provider: str = "gemini",
+    model: Optional[str] = None,
+    overwrite: bool = False,
+    dry_run: bool = False,
+) -> None:
+    """
+    ref（例: GM.I.S01）の節からclaim候補をAIに抽出させ、claims/に保存する。
+    my_paraphraseは空欄で出力する（人間がレビュー・記入する）。
+    """
+    try:
+        normalized_ref = normalize_ref(ref)
+        normalized_provider = _normalize_provider(provider)
+    except ValueError as e:
+        print(f"[red]Input error:[/red] {e}")
+        raise typer.Exit(code=1)
+
+    selected_model = model or _default_model_for_provider(normalized_provider)
+
+    # ソーステキスト読み込み
+    chunk_path = pathlib.Path(chunk_dir) / f"{normalized_ref}.txt"
+    if not chunk_path.exists():
+        print(f"[red]Chunk not found:[/red] {chunk_path}")
+        raise typer.Exit(code=1)
+    source_text = chunk_path.read_text(encoding="utf-8")
+
+    # 翻訳テキスト読み込み（なければ空文字）
+    translation_path = pathlib.Path(translation_dir) / f"{normalized_ref}.md"
+    translation_text = translation_path.read_text(encoding="utf-8") if translation_path.exists() else ""
+    if not translation_text:
+        print(f"[yellow]Warning:[/yellow] translation not found for {normalized_ref}, proceeding with source only")
+
+    # 出力先と既存claimの確認
+    out_file = pathlib.Path(claims_dir) / f"{normalized_ref}.yaml"
+    existing_claims: list[Claim] = []
+    if out_file.exists():
+        data = yaml.safe_load(out_file.read_text(encoding="utf-8"))
+        existing = ClaimsFile.model_validate(data)
+        existing_claims = existing.claims
+        if existing_claims and not overwrite:
+            print(f"[yellow]Skip:[/yellow] {out_file.name} already has {len(existing_claims)} claims (use --overwrite)")
+            raise typer.Exit(code=0)
+
+    existing_ids = [c.claim_id for c in existing_claims]
+
+    if dry_run:
+        print(f"[green]Dry-run:[/green] would extract claims for {normalized_ref}")
+        print(f"provider={normalized_provider} model={selected_model}")
+        print(f"source={len(source_text)} chars, translation={len(translation_text)} chars")
+        return
+
+    # 抽出実行
+    try:
+        if normalized_provider == "gemini":
+            cfg = get_gemini_config()
+            raw_claims = extract_claims_with_gemini(
+                cfg=cfg, ref=normalized_ref, source_text=source_text,
+                translation_text=translation_text, existing_ids=existing_ids, model=selected_model,
+            )
+        else:
+            cfg = get_openai_config()
+            raw_claims = extract_claims_with_openai(
+                cfg=cfg, ref=normalized_ref, source_text=source_text,
+                translation_text=translation_text, existing_ids=existing_ids, model=selected_model,
+            )
+    except RuntimeError as e:
+        print(f"[red]Config error:[/red] {e}")
+        raise typer.Exit(code=1)
+
+    if not raw_claims:
+        print("[red]Extract failed:[/red] empty response")
+        raise typer.Exit(code=1)
+
+    # Pydanticでバリデーションしてファイルに書き込む
+    try:
+        new_claims = [Claim.model_validate(c) for c in raw_claims]
+    except Exception as e:
+        print(f"[red]Parse error:[/red] {e}")
+        raise typer.Exit(code=1)
+
+    claims_file = ClaimsFile(
+        version=1,
+        work="Nietzsche_Genealogy_of_Morals_I",
+        section=normalized_ref,
+        claims=(existing_claims + new_claims) if not overwrite else new_claims,
+    )
+
+    out_file.write_text(
+        yaml.dump(claims_file.model_dump(exclude_none=True), allow_unicode=True, sort_keys=False),
+        encoding="utf-8",
+    )
+    print(f"[green]OK:[/green] extracted {len(new_claims)} claims → {out_file}")
+
+
+@app.command()
+def save_trace(
+    ref: str,
+    text: Optional[str] = typer.Option(None, "--text", "-t", help="保存するテキスト"),
+    from_file: Optional[str] = typer.Option(None, "--from-file", "-f", help="読み込むファイルパス"),
+    trace_dir: str = str(DEFAULT_TRACE_DIR),
+    append: bool = typer.Option(True, help="既存ファイルに追記する（--no-appendで上書き）"),
+) -> None:
+    """
+    壁打ちの記録を trace/ に保存する。--text または --from-file でテキストを渡す。
+    """
+    try:
+        normalized_ref = normalize_ref(ref)
+    except ValueError as e:
+        print(f"[red]Input error:[/red] {e}")
+        raise typer.Exit(code=1)
+
+    if text:
+        content = text
+    elif from_file:
+        fp = pathlib.Path(from_file)
+        if not fp.exists():
+            print(f"[red]File not found:[/red] {fp}")
+            raise typer.Exit(code=1)
+        content = fp.read_text(encoding="utf-8")
+    else:
+        print("[red]Input error:[/red] provide --text or --from-file")
+        raise typer.Exit(code=1)
+
+    out_file = pathlib.Path(trace_dir) / f"{normalized_ref}.md"
+    out_file.parent.mkdir(parents=True, exist_ok=True)
+
+    if append and out_file.exists():
+        out_file.write_text(
+            out_file.read_text(encoding="utf-8") + "\n\n---\n\n" + content,
+            encoding="utf-8",
+        )
+        print(f"[green]OK:[/green] appended to {out_file}")
+    else:
+        out_file.write_text(content, encoding="utf-8")
+        print(f"[green]OK:[/green] wrote {out_file}")
+
+
+@app.command()
+def set_paraphrase(
+    claim_id: str,
+    paraphrase: str,
+    claims_dir: str = str(DEFAULT_CLAIMS_DIR),
+) -> None:
+    """
+    claim_id（例: GM.I.S01.C01）の my_paraphrase を更新する。
+    """
+    # claim_id から節を特定: GM.I.S01.C01 → GM.I.S01
+    parts = claim_id.rsplit(".", 1)
+    if len(parts) != 2 or not parts[1].startswith("C"):
+        print(f"[red]Input error:[/red] invalid claim_id format: {claim_id}")
+        raise typer.Exit(code=1)
+    section = parts[0]
+
+    claims_file_path = pathlib.Path(claims_dir) / f"{section}.yaml"
+    if not claims_file_path.exists():
+        print(f"[red]Not found:[/red] {claims_file_path}")
+        raise typer.Exit(code=1)
+
+    data = yaml.safe_load(claims_file_path.read_text(encoding="utf-8"))
+    claims_obj = ClaimsFile.model_validate(data)
+
+    target = next((c for c in claims_obj.claims if c.claim_id == claim_id), None)
+    if target is None:
+        print(f"[red]Not found:[/red] claim_id {claim_id} in {claims_file_path.name}")
+        raise typer.Exit(code=1)
+
+    target.my_paraphrase = paraphrase
+    claims_file_path.write_text(
+        yaml.dump(claims_obj.model_dump(exclude_none=True), allow_unicode=True, sort_keys=False),
+        encoding="utf-8",
+    )
+    print(f"[green]OK:[/green] updated {claim_id}")
+    print(f"  my_paraphrase: {paraphrase}")
+
 
 if __name__ == "__main__":
     app()
